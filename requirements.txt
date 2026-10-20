@@ -1,0 +1,5 @@
+myPyllant==0.9.18
+fastapi>=0.110
+uvicorn>=0.29
+aiohttp>=3.9
+vaillant-netatmo-api==0.13.1
