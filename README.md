@@ -83,6 +83,30 @@ Other sensor options are in `config.example.toml`: mains/USB-powered Shellys
 (`mode = "shelly"`), or any device with a JSON URL such as Home Assistant, ESPHome or Tasmota
 (`mode = "http_json"`).
 
+### Reading the Shelly through Shelly's cloud
+
+If your PC can't open the Shelly's address in a browser (some internet boxes, VOO among them,
+block traffic between their 2.4 GHz Wi-Fi and the rest of the network), let the app fetch
+the readings from Shelly's cloud instead:
+
+1. In the **Shelly Smart Control** app, open your profile → **User settings** →
+   **Authorization cloud key**, and tap **Get key**. Copy the **key** and the **server** it shows
+   (something like `shelly-103-eu.shelly.cloud`).
+2. Open the sensor → **Settings → Device information** and copy the **Device ID**
+   (12 letters and numbers, e.g. `e4b0631a2b3c`).
+3. In `config.toml`:
+   ```toml
+   [external_sensor]
+   mode = "shelly_cloud"
+   name = "Bedroom"
+   cloud_server = "shelly-103-eu.shelly.cloud"
+   cloud_auth_key = "the long key from step 1"
+   device_id = "e4b0631a2b3c"
+   ```
+
+Keep the key private: it gives access to your Shelly devices. It stays in `config.toml` on your
+PC, which is never uploaded to GitHub.
+
 ### "Heat to the external sensor"
 
 The Vaillant controller can only regulate on its **own** sensor, and there is no way to

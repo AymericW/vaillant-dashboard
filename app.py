@@ -61,6 +61,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "humidity_path": "humidity",
         "poll_seconds": 60,
         "max_age_minutes": 30,
+        "cloud_server": "",
+        "cloud_auth_key": "",
+        "device_id": "",
     },
     "compensation": {
         "max_offset": 3.0,
@@ -864,6 +867,19 @@ def dig(data: Any, path: str) -> Any:
     return data
 
 
+def find_reading(data: Any, prefix: str, field: str) -> float | None:
+    """Find e.g. {"temperature:0": {"tC": 21.3}} anywhere in a nested Shelly status."""
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k.startswith(prefix + ":") and isinstance(v, dict) and isinstance(v.get(field), (int, float)):
+                return v[field]
+        for v in data.values():
+            found = find_reading(v, prefix, field)
+            if found is not None:
+                return found
+    return None
+
+
 class ExternalSensor:
     def __init__(self, cfg: dict, history: History):
         self.cfg = cfg
@@ -915,19 +931,41 @@ class ExternalSensor:
         h = dig(st, "hum.value") or dig(st, "ext_humidity.0.hum")
         return t, h
 
+    async def _read_shelly_cloud(self, session: aiohttp.ClientSession) -> tuple[float | None, float | None]:
+        """Read the sensor through Shelly's cloud, for networks where the PC can't reach it directly."""
+        c = self.cfg
+        if not (c["cloud_server"] and c["cloud_auth_key"] and c["device_id"]):
+            raise RuntimeError("Fill in cloud_server, cloud_auth_key and device_id in [external_sensor] (see README)")
+        server = c["cloud_server"].strip().removeprefix("https://").removeprefix("http://").strip("/")
+        async with session.post(
+            f"https://{server}/device/status",
+            data={"id": c["device_id"].strip().lower(), "auth_key": c["cloud_auth_key"].strip()},
+        ) as r:
+            body = await r.json(content_type=None)
+        if not body.get("isok"):
+            raise RuntimeError(f"Shelly cloud refused the request: {body.get('errors') or body}")
+        if dig(body, "data.online") is False:
+            log.info("Shelly cloud reports the sensor offline; using its last known reading")
+        st = dig(body, "data.device_status") or body.get("data") or {}
+        return find_reading(st, "temperature", "tC") or dig(st, "tmp.tC"), find_reading(st, "humidity", "rh") or dig(st, "hum.value")
+
     async def _read_http_json(self, session: aiohttp.ClientSession) -> tuple[float | None, float | None]:
         async with session.get(self.cfg["url"]) as r:
             data = await r.json(content_type=None)
         return dig(data, self.cfg["temperature_path"]), dig(data, self.cfg["humidity_path"] or "")
 
     async def run(self):
-        if self.cfg["mode"] not in ("shelly", "http_json"):
+        if self.cfg["mode"] not in ("shelly", "shelly_cloud", "http_json"):
             return  # "push" mode receives readings over HTTP instead
         timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             while True:
                 try:
-                    reader = self._read_shelly if self.cfg["mode"] == "shelly" else self._read_http_json
+                    reader = {
+                        "shelly": self._read_shelly,
+                        "shelly_cloud": self._read_shelly_cloud,
+                        "http_json": self._read_http_json,
+                    }[self.cfg["mode"]]
                     t, h = await reader(session)
                     if t is None:
                         self._set_error("No temperature found in sensor response")
