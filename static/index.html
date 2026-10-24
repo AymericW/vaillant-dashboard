@@ -3,196 +3,283 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Heating Dashboard</title>
+<title>Heating</title>
 <script src="/static/chart.umd.js"></script>
 <style>
 :root {
   color-scheme: light;
-  --bg: #f4f4f2; --surface: #fcfcfb; --border: #e3e2de;
-  --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
-  --accent: #2a78d6; --accent-ink: #fff;
+  --bg: #f2f2ef; --surface: #ffffff; --surface-2: #f7f7f5; --border: #e6e5e1;
+  --text: #111110; --text-2: #55544f; --muted: #8c8b85;
+  --accent: #2a78d6; --accent-soft: #e5effb; --accent-ink: #fff;
+  --heat: #e3591f; --heat-soft: #fdece4;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
-  --good: #1a7f37; --warn: #b26b00; --bad: #c62828;
-  --grid: #ecebe7;
+  --good: #1a7f37; --good-soft: #e3f3e7; --warn: #a35f00; --warn-soft: #fbf0dc; --bad: #c62828; --bad-soft: #fbe5e5;
+  --grid: #efeeea;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #121211; --surface: #1a1a19; --border: #2d2d2b;
-    --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
-    --accent: #3987e5;
+    --bg: #0f0f0e; --surface: #191918; --surface-2: #20201f; --border: #2b2b29;
+    --text: #f2f1ee; --text-2: #c3c2b9; --muted: #8f8e86;
+    --accent: #3987e5; --accent-soft: #15263b; --heat: #f07038; --heat-soft: #3a1f13;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
-    --good: #4cb867; --warn: #e0a030; --bad: #ef6b6b; --grid: #262624;
+    --good: #4cb867; --good-soft: #142a1a; --warn: #e0a030; --warn-soft: #2e2410; --bad: #ef6b6b; --bad-soft: #341616;
+    --grid: #262624; --shadow: none;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121211; --surface: #1a1a19; --border: #2d2d2b;
-  --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
-  --accent: #3987e5;
+  --bg: #0f0f0e; --surface: #191918; --surface-2: #20201f; --border: #2b2b29;
+  --text: #f2f1ee; --text-2: #c3c2b9; --muted: #8f8e86;
+  --accent: #3987e5; --accent-soft: #15263b; --heat: #f07038; --heat-soft: #3a1f13;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
-  --good: #4cb867; --warn: #e0a030; --bad: #ef6b6b; --grid: #262624;
+  --good: #4cb867; --good-soft: #142a1a; --warn: #e0a030; --warn-soft: #2e2410; --bad: #ef6b6b; --bad-soft: #341616;
+  --grid: #262624; --shadow: none;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-main { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
-header h1 { font-size: 20px; margin: 0; flex: 1; }
-.status { color: var(--text-2); font-size: 13px; display: flex; gap: 8px; align-items: center; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
-.dot.ok { background: var(--good); } .dot.err { background: var(--bad); }
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 1120px; margin: 0 auto; padding: 0 16px 56px; }
+.num { font-variant-numeric: tabular-nums; }
 button, select, input { font: inherit; color: inherit; }
-button { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  padding: 6px 12px; cursor: pointer; }
+button { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 14px; cursor: pointer; font-weight: 500; }
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; }
 button:disabled { opacity: .5; cursor: wait; }
-select, input[type=number] { background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 5px 8px; }
-input[type=number] { width: 80px; }
-.banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; border: 1px solid var(--border);
-  background: var(--surface); }
-.banner.err { border-color: var(--bad); }
-.banner.info { border-color: var(--accent); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
-.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
-.tile .label { color: var(--text-2); font-size: 12px; }
-.tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+select { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; }
+a { color: var(--accent); }
+code { font-size: 13px; }
+
+/* top bar + tabs */
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 16px 0 0; }
+.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bar h1 { font-size: 22px; margin: 0; flex: 1; letter-spacing: -.01em; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--good); } .dot.err { background: var(--bad); }
+.icon-btn { width: 38px; height: 38px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surface); }
+.tabs { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 14px;
+  color: var(--text-2); font-weight: 500; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.panel { padding-top: 18px; }
+.panel[hidden] { display: none; }
+
+/* cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; min-width: 0; box-shadow: var(--shadow); }
+.card h2 { font-size: 16px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; letter-spacing: -.01em; }
+.card h2 .spacer { flex: 1; }
+.stack { display: grid; gap: 16px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.label { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* banners */
+.banner { border-radius: 14px; padding: 12px 16px; border: 1px solid; font-size: 14px; }
+.banner.err { background: var(--bad-soft); border-color: var(--bad); }
+.banner.info { background: var(--accent-soft); border-color: var(--accent); }
+
+/* hero */
+.hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: stretch; }
+.readings { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-end; }
+.reading .big { font-size: 64px; font-weight: 300; line-height: 1; letter-spacing: -.03em; }
+.reading .big sup { font-size: 22px; font-weight: 400; color: var(--text-2); margin-left: 2px; vertical-align: top; position: relative; top: 8px; }
+.reading.secondary .big { font-size: 44px; color: var(--text-2); }
+.state-line { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; border-radius: 99px; padding: 4px 11px;
+  background: var(--surface-2); color: var(--text-2); }
+.pill.heat { background: var(--heat-soft); color: var(--heat); }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.accent { background: var(--accent-soft); color: var(--accent); }
+.pill svg { width: 14px; height: 14px; }
+.target { background: var(--surface-2); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.dial { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.dial button { width: 52px; height: 52px; border-radius: 50%; font-size: 24px; padding: 0; background: var(--surface); }
+.dial .v { font-size: 48px; font-weight: 300; min-width: 130px; text-align: center; letter-spacing: -.02em; }
+.dial .v small { font-size: 20px; color: var(--text-2); }
+.target .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
+.tile .value { font-size: 28px; font-weight: 500; margin-top: 2px; letter-spacing: -.02em; }
 .tile .value small { font-size: 14px; font-weight: 400; color: var(--text-2); }
 .tile .sub { color: var(--muted); font-size: 12px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; margin-bottom: 14px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
-.card h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
-.card h2 .tag { font-size: 11px; font-weight: 500; color: var(--text-2); border: 1px solid var(--border);
-  border-radius: 99px; padding: 1px 8px; }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
-.kv dt { color: var(--text-2); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
-.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.row label { color: var(--text-2); font-size: 13px; min-width: 120px; }
-.big { font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.big small { font-size: 16px; color: var(--text-2); font-weight: 400; }
-.stepper { display: inline-flex; align-items: center; gap: 6px; }
-.stepper button { width: 34px; padding: 6px 0; }
-.stepper .v { min-width: 64px; text-align: center; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
-hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
-.chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tile.warn { border-color: var(--warn); }
+
+/* form rows */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.row:first-child { border-top: 0; }
+.row > .label { flex: 1; min-width: 140px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; padding: 0; border-radius: 50%; }
+.stepper .v { min-width: 60px; text-align: center; font-size: 17px; font-weight: 600; }
+details.more > summary { cursor: pointer; list-style: none; color: var(--text-2); font-weight: 500; padding: 4px 0; }
+details.more > summary::before { content: "▸ "; }
+details.more[open] > summary::before { content: "▾ "; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; margin: 0; }
+.kv dt { color: var(--text-2); } .kv dd { margin: 0; }
+
+/* switch */
+.switch { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; }
+.switch .track { width: 46px; height: 26px; border-radius: 99px; background: var(--border); position: relative; flex: none; transition: background .15s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(20px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.compare > div { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; }
+.compare .value { font-size: 30px; font-weight: 400; letter-spacing: -.02em; }
+.explain { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-top: 12px; }
+
+/* charts */
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
 .chart-head h2 { margin: 0; flex: 1; }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
-.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
-.chart-box { position: relative; height: 260px; }
-.chart-box.small { height: 160px; }
-.multi { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-.multi h3 { font-size: 13px; color: var(--text-2); font-weight: 500; margin: 0 0 4px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-th { color: var(--text-2); font-weight: 500; }
-td.num { text-align: right; font-variant-numeric: tabular-nums; }
-pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto;
-  max-height: 520px; font-size: 12px; }
-details summary { cursor: pointer; color: var(--text-2); }
-.muted { color: var(--muted); }
-.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; border-radius: 99px; padding: 2px 9px;
-  border: 1px solid var(--border); }
-.pill.good { color: var(--good); border-color: currentColor; }
-.pill.warn { color: var(--warn); border-color: currentColor; }
-.pill.bad { color: var(--bad); border-color: currentColor; }
-.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
-.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
-.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
-  padding: 8px 16px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
-.toast.show { opacity: 1; }
-@media (max-width: 480px) { .grid { grid-template-columns: 1fr; } .big { font-size: 32px; } }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.chart-box { position: relative; height: 280px; }
+.chart-box.small { height: 170px; }
+.multi { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.multi h3 { font-size: 13px; color: var(--text-2); font-weight: 500; margin: 0 0 6px; }
+
+/* tables */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-2); font-weight: 500; font-size: 13px; }
+td.r { text-align: right; }
+pre { background: var(--surface-2); border-radius: 12px; padding: 14px; overflow: auto; max-height: 560px; font-size: 12px; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--bg);
+  padding: 10px 18px; border-radius: 12px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  max-width: calc(100% - 32px); font-weight: 500; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; }
+  .reading .big { font-size: 52px; }
+  .reading.secondary .big { font-size: 38px; }
+  .cols { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1 id="title">Heating</h1>
-    <div class="status"><span class="dot" id="dot"></span><span id="status">Connecting…</span></div>
-    <button id="refresh" title="Ask Vaillant for fresh data now">Refresh</button>
-    <button id="theme" title="Switch light / dark">◐</button>
-  </header>
-
-  <div id="banners"></div>
-  <div class="tiles" id="tiles"></div>
-  <div class="grid" id="controls"></div>
-
-  <section class="card" style="margin-bottom:14px">
-    <div class="chart-head">
-      <h2>Room temperature</h2>
-      <div class="legend" id="legend-room"></div>
-      <select id="range">
-        <option value="6">6 hours</option>
-        <option value="24" selected>24 hours</option>
-        <option value="168">7 days</option>
-        <option value="720">30 days</option>
-      </select>
-      <a href="/api/history.csv" class="muted" style="font-size:12px">CSV</a>
+  <div class="top">
+    <div class="bar">
+      <h1 id="title">Heating</h1>
+      <span class="chip"><span class="dot" id="dot"></span><span id="status">Connecting…</span></span>
+      <button class="icon-btn" id="refresh" title="Ask for fresh data now" aria-label="Refresh">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button class="icon-btn" id="theme" title="Switch light / dark" aria-label="Switch light or dark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+      </button>
     </div>
-    <div class="chart-box"><canvas id="chart-room"></canvas></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="home" aria-selected="true">Home</button>
+      <button role="tab" data-tab="charts" aria-selected="false">Charts</button>
+      <button role="tab" data-tab="activity" aria-selected="false">Activity</button>
+      <button role="tab" data-tab="system" aria-selected="false">System</button>
+    </nav>
+  </div>
+
+  <!-- HOME -->
+  <section class="panel stack" id="tab-home">
+    <div id="banners" class="stack"></div>
+    <div id="home" class="stack"></div>
+    <section class="card">
+      <div class="chart-head">
+        <h2>Room temperature</h2>
+        <select id="range" aria-label="Time range">
+          <option value="6">6 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="168">7 days</option>
+          <option value="720">30 days</option>
+        </select>
+      </div>
+      <div class="legend" id="legend-room" style="margin-bottom:8px"></div>
+      <div class="chart-box"><canvas id="chart-room"></canvas></div>
+    </section>
   </section>
 
-  <section class="card" style="margin-bottom:14px">
-    <h2>System</h2>
-    <div class="multi" id="multi"></div>
+  <!-- CHARTS -->
+  <section class="panel stack" id="tab-charts" hidden>
+    <section class="card">
+      <div class="chart-head"><h2>System</h2><a href="/api/history.csv" class="small">Download CSV</a></div>
+      <div class="multi" id="multi"></div>
+    </section>
+    <section class="card" id="energy-card" hidden>
+      <div class="chart-head"><h2>Energy per day</h2></div>
+      <div class="legend" id="legend-energy" style="margin-bottom:8px"></div>
+      <div class="chart-box"><canvas id="chart-energy"></canvas></div>
+      <details class="more" style="margin-top:12px"><summary>Totals for the last 14 days</summary><div id="energy-table"></div></details>
+    </section>
   </section>
 
-  <section class="card" style="margin-bottom:14px" id="energy-card" hidden>
-    <div class="chart-head"><h2>Energy per day <span class="tag">Wh, from Vaillant</span></h2>
-      <div class="legend" id="legend-energy"></div></div>
-    <div class="chart-box"><canvas id="chart-energy"></canvas></div>
-    <details style="margin-top:10px"><summary>Totals (last 14 days)</summary><div id="energy-table"></div></details>
+  <!-- ACTIVITY -->
+  <section class="panel stack" id="tab-activity" hidden>
+    <section class="card">
+      <div class="chart-head">
+        <h2>Activity log</h2>
+        <select id="log-filter" aria-label="Filter">
+          <option value="">Everything</option>
+          <option value="command,detected" selected>Changes only</option>
+          <option value="check,command">Algorithm decisions</option>
+          <option value="error,sensor,system">Errors &amp; connection</option>
+        </select>
+        <select id="log-range" aria-label="Period">
+          <option value="24">24 hours</option>
+          <option value="72" selected>3 days</option>
+          <option value="168">7 days</option>
+          <option value="720">30 days</option>
+        </select>
+        <a href="/api/events.csv" class="small">CSV</a>
+      </div>
+      <p class="muted small" style="margin:0 0 10px">
+        <b>You</b>: from this dashboard · <b>Algorithm</b>: "heat to the sensor" ·
+        <b>Thermostat</b>: on the thermostat, the phone app, or its schedule · <b>App</b>: connection events.</p>
+      <div id="log" style="overflow-x:auto"></div>
+    </section>
   </section>
 
-  <section class="card" style="margin-bottom:14px">
-    <div class="chart-head">
-      <h2>Activity log</h2>
-      <select id="log-filter">
-        <option value="">Everything</option>
-        <option value="command,detected" selected>Changes only</option>
-        <option value="check,command">Algorithm decisions</option>
-        <option value="error,sensor,system">Errors &amp; connection</option>
-      </select>
-      <select id="log-range">
-        <option value="24">24 hours</option>
-        <option value="72" selected>3 days</option>
-        <option value="168">7 days</option>
-        <option value="720">30 days</option>
-      </select>
-      <a href="/api/events.csv" class="muted" style="font-size:12px">CSV</a>
-    </div>
-    <p class="muted" style="margin:0 0 8px;font-size:12px">
-      <b>You</b> = changes from this dashboard · <b>Algorithm</b> = "heat to the external sensor" ·
-      <b>Thermostat</b> = changes made on the thermostat, the phone app, or by the schedule · <b>App</b> = connection events.
-      Algorithm checks are only logged when their reasoning changes.</p>
-    <div id="log" style="overflow-x:auto;max-height:480px;overflow-y:auto"></div>
-  </section>
-
-  <section class="card" style="margin-bottom:14px">
-    <h2>Devices &amp; diagnostics</h2>
-    <div id="devices"></div>
-  </section>
-
-  <section class="card">
-    <details id="raw-details"><summary>Everything the API returns (raw)</summary>
-      <pre id="raw">Loading…</pre></details>
+  <!-- SYSTEM -->
+  <section class="panel stack" id="tab-system" hidden>
+    <section class="card"><h2>Devices &amp; diagnostics</h2><div id="devices"></div></section>
+    <section class="card">
+      <details class="more" id="raw-details"><summary>Everything the API returns (raw data)</summary>
+        <pre id="raw">Loading…</pre></details>
+    </section>
   </section>
 </main>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = (v, d = 1) => v == null || Number.isNaN(v) ? "–" : Number(v).toFixed(d);
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const pretty = (s) => s ? String(s).replaceAll("_", " ").toLowerCase().replace(/^\w/, c => c.toUpperCase()) : "–";
 const ago = (ts) => { if (!ts) return "never"; const s = Math.round(Date.now()/1000 - ts);
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s/60)} min ago` : `${(s/3600).toFixed(1)} h ago`; };
-const time = (iso) => iso ? new Date(iso).toLocaleString([], {weekday:"short", hour:"2-digit", minute:"2-digit", day:"numeric", month:"short"}) : "–";
+const time = (iso) => iso ? new Date(iso).toLocaleString([], {weekday:"short", hour:"2-digit", minute:"2-digit"}) : "–";
+const ICON = {
+  flame: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+};
 
 let state = null;
-const pending = {};   // values the user is adjusting with +/- before pressing Apply
+const pending = {};   // values being adjusted with −/+ before pressing Set/Save
+let moreOpen = false; // keep "More heating settings" open across refreshes
 
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 3500); }
@@ -204,160 +291,205 @@ async function post(url, body) {
 }
 async function act(action, params, label) {
   document.querySelectorAll("button").forEach(b => b.disabled = true);
-  try { await post("/api/action", {action, ...params}); toast(`${label || "Sent"} ✓ — Vaillant may take a minute to show it`);
+  try { await post("/api/action", {action, ...params}); toast(`${label || "Sent"} ✓ (may take a minute to show)`);
         Object.keys(pending).forEach(k => delete pending[k]); setTimeout(load, 6000); }
   catch (e) { toast("Failed: " + e.message); }
   finally { document.querySelectorAll("button").forEach(b => b.disabled = false); }
 }
 
+// ---------- tabs ----------
+function showTab(name) {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== "tab-" + name);
+  try { localStorage.setItem("tab", name); } catch {}
+  if (state) redrawCharts();   // charts in hidden tabs have no size until shown
+  if (name === "activity") loadLog();
+}
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
 // ---------- rendering ----------
-function tile(label, value, unit, sub) {
-  return `<div class="tile"><div class="label">${esc(label)}</div>
-    <div class="value">${value}<small> ${unit}</small></div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+function tile(label, value, unit, sub, cls = "") {
+  return `<div class="tile ${cls}"><div class="label">${esc(label)}</div>
+    <div class="value num">${value}<small> ${unit}</small></div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+}
+function stepper(key, value, step, min, max) {
+  const v = pending[key] ?? value ?? min;
+  return `<span class="stepper"><button data-step="${key}" data-d="${-step}" data-min="${min}" data-max="${max}" aria-label="Lower">−</button>
+    <span class="v num" id="v-${key}">${fmt(v, step < 1 ? 1 : 0)}</span>
+    <button data-step="${key}" data-d="${step}" data-min="${min}" data-max="${max}" aria-label="Higher">+</button></span>`;
 }
 
 function render() {
   const s0 = state.systems[0];
-  $("#title").textContent = s0 ? `${s0.name || "Heating"}` : "Heating";
-  const ok = !state.error && state.updated;
-  $("#dot").className = "dot " + (state.error ? "err" : ok ? "ok" : "");
-  $("#status").textContent = state.error ? "Error" : state.updated ? `Updated ${ago(state.updated)}` : "Connecting…";
+  $("#title").textContent = s0?.name || "Heating";
+  $("#dot").className = "dot " + (state.error ? "err" : state.updated ? "ok" : "");
+  $("#status").textContent = state.error ? "Connection problem" : state.updated ? `Updated ${ago(state.updated)}` : "Connecting…";
 
   let b = "";
-  if (state.demo) b += `<div class="banner info"><b>Demo mode</b> — simulated data. Run without <code>--demo</code> after filling in <code>config.toml</code> to see your real system.</div>`;
-  if (state.error) b += `<div class="banner err"><b>Could not talk to Vaillant:</b> ${esc(state.error)}</div>`;
+  if (state.demo) b += `<div class="banner info"><b>Demo mode</b>: simulated data. Fill in <code>config.toml</code> and start without <code>--demo</code> to see your system.</div>`;
+  if (state.error) b += `<div class="banner err"><b>Can't reach the heating cloud:</b> ${esc(state.error)}</div>`;
   for (const s of state.systems) {
-    if (s.connected === false) b += `<div class="banner err">⚠ ${esc(s.name)}: the gateway is offline (not connected to the Vaillant cloud).</div>`;
-    if (s.trouble_codes && s.trouble_codes.length) b += `<div class="banner err">⚠ Fault codes reported — see Devices &amp; diagnostics below.</div>`;
+    if (s.connected === false) b += `<div class="banner err"><b>${esc(s.name)} is offline:</b> the gateway isn't connected to the cloud.</div>`;
+    if (s.trouble_codes && s.trouble_codes.length) b += `<div class="banner err"><b>Fault codes reported</b>: see the System tab.</div>`;
   }
   $("#banners").innerHTML = b;
 
-  const ext = state.external;
-  let t = "";
-  for (const s of state.systems) {
-    for (const z of s.zones) {
-      t += tile(`${z.name} (Vaillant)`, fmt(z.room_temperature), "°C", z.humidity != null ? `${fmt(z.humidity, 0)} % humidity` : pretty(z.heating_state));
-      t += tile(`${z.name} target`, fmt(z.target), "°C", pretty(z.special_function !== "NONE" ? z.special_function : z.mode));
-    }
-    if (ext.enabled) t += tile(ext.name, fmt(ext.temperature), "°C", ext.fresh ? `${ext.humidity != null ? fmt(ext.humidity,0)+" % · " : ""}${ago(ext.updated)}` : (ext.error ? "⚠ " + esc(ext.error) : "no recent reading"));
-    t += tile("Outdoor", fmt(s.outdoor_temperature), "°C", s.outdoor_temperature_24h != null ? `24h avg ${fmt(s.outdoor_temperature_24h)} °C` : "");
-    if (s.water_pressure != null) t += tile("Water pressure", fmt(s.water_pressure, 2), "bar", s.water_pressure == null ? "" : s.water_pressure < 1 ? "⚠ low — top up" : s.water_pressure > 2.5 ? "⚠ high" : "normal (1–2 bar)");
-    if (s.system_flow_temperature != null) t += tile("Flow temperature", fmt(s.system_flow_temperature), "°C", "water leaving the boiler");
-    for (const d of s.dhw) t += d.temperature != null ? tile("Hot water", fmt(d.temperature), "°C", `set to ${fmt(d.setpoint, 0)} °C`) : tile("Hot water setting", fmt(d.setpoint, 0), "°C");
-    if (s.cylinder_top != null) t += tile("Cylinder top / bottom", `${fmt(s.cylinder_top)}/${fmt(s.cylinder_bottom)}`, "°C");
-    for (const r of s.ambisense_rooms) t += tile(r.name, fmt(r.temperature), "°C", `target ${fmt(r.setpoint)} °C${r.window_open ? " · window open" : ""}`);
-  }
-  $("#tiles").innerHTML = t;
-
-  // keep focus/scroll stable: only rebuild controls if user isn't mid-edit
-  if (!document.activeElement || !$("#controls").contains(document.activeElement)) renderControls();
+  // don't rebuild while the user is using a control on the home tab
+  if (!$("#home").contains(document.activeElement) || document.activeElement === document.body) renderHome();
   renderDevices();
 }
 
-function stepper(key, value, step, min, max) {
-  const v = pending[key] ?? value ?? min;
-  return `<span class="stepper"><button data-step="${key}" data-d="${-step}" data-min="${min}" data-max="${max}">−</button>
-    <span class="v" id="v-${key}">${fmt(v, step < 1 ? 1 : 0)}</span>
-    <button data-step="${key}" data-d="${step}" data-min="${min}" data-max="${max}">+</button></span>`;
-}
-
-function renderControls() {
-  let h = "";
-  const ext = state.external, comp = state.compensation;
+function renderHome() {
+  const ext = state.external;
+  let h = "", more = "";
   for (const s of state.systems) {
     const sid = esc(s.id);
     for (const z of s.zones) {
       const k = `z${z.index}`;
       const veto = z.quick_veto_end;
       const holiday = z.special_function === "HOLIDAY" || (z.holiday_end && new Date(z.holiday_end) > new Date());
+      const heating = z.heating_state === "HEATING_UP";
       const can = (c) => !z.controls || z.controls.includes(c);
-      h += `<div class="card"><h2>${esc(z.name)} <span class="tag">${pretty(z.heating_state)}</span>
-          ${z.circuit?.state ? `<span class="tag">circuit: ${pretty(z.circuit.state)}</span>` : ""}</h2>
-        <div class="big">${fmt(z.room_temperature)}<small> °C now · target ${fmt(z.target)} °C</small></div>
-        ${veto ? `<div class="row"><span class="pill warn">Temporary override until ${time(veto)}</span>
-            <button data-act="zone_cancel_veto" data-p='${JSON.stringify({system: s.id, zone: z.index})}'>Cancel override</button></div>` : ""}
-        ${holiday ? `<div class="row"><span class="pill warn">Away${z.holiday_end ? " until " + time(z.holiday_end) : ""}</span>
-            <button data-act="cancel_holiday" data-p='${JSON.stringify({system: s.id})}'>I'm back</button></div>` : ""}
-        <div class="row"><label>Temporary temp</label>${stepper(k+"veto", z.target, 0.5, 5, 30)}
-          <select id="${k}hours">${[1,2,3,6,12,24].map(x => `<option value="${x}" ${x==3?"selected":""}>${x} h</option>`).join("")}</select>
-          <button class="primary" data-veto="${k}" data-sid="${sid}" data-zone="${z.index}">Set</button></div>
-        <div class="row"><label>Mode</label>
+      const pZone = esc(JSON.stringify({system: s.id, zone: z.index}));
+      const pSys = esc(JSON.stringify({system: s.id}));
+      h += `<section class="card hero">
+        <div>
+          <div class="readings">
+            <div class="reading"><div class="label">${esc(z.name)} · thermostat</div>
+              <div class="big num">${fmt(z.room_temperature)}<sup>°C</sup></div></div>
+            ${ext.enabled ? `<div class="reading secondary"><div class="label">${esc(ext.name)}</div>
+              <div class="big num">${fmt(ext.temperature)}<sup>°C</sup></div></div>` : ""}
+          </div>
+          <div class="state-line">
+            ${heating ? `<span class="pill heat">${ICON.flame} Heating</span>` : `<span class="pill">${ICON.pause} Not heating</span>`}
+            ${holiday ? `<span class="pill warn">Away${z.holiday_end ? " until " + time(z.holiday_end) : ""}</span>`
+              : veto ? `<span class="pill warn">${ICON.clock} ${fmt(z.target)} °C until ${time(veto)}</span>`
+              : `<span class="pill">${pretty(z.mode)}</span>`}
+            ${state.compensation.compensation_enabled ? `<span class="pill accent">Heating to ${esc(ext.name)}</span>` : ""}
+            ${z.humidity != null ? `<span class="pill">${fmt(z.humidity, 0)} % humidity</span>` : ""}
+          </div>
+          ${veto || holiday ? `<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            ${veto ? `<button class="ghost" data-act="zone_cancel_veto" data-p="${pZone}">Back to schedule</button>` : ""}
+            ${holiday ? `<button class="ghost" data-act="cancel_holiday" data-p="${pSys}">I'm back</button>` : ""}</div>` : ""}
+        </div>
+        <div class="target">
+          <div class="label" style="text-align:center">Target · now ${fmt(z.target)} °C${z.schedule_setpoint != null ? ` · schedule ${fmt(z.schedule_setpoint)} °C` : ""}</div>
+          <div class="dial">
+            <button data-step="${k}veto" data-d="-0.5" data-min="5" data-max="30" aria-label="Lower">−</button>
+            <div class="v num" id="v-${k}veto">${fmt(pending[k + "veto"] ?? z.target ?? 20)}<small> °C</small></div>
+            <button data-step="${k}veto" data-d="0.5" data-min="5" data-max="30" aria-label="Higher">+</button>
+          </div>
+          <div class="actions">
+            <select id="${k}hours" aria-label="For how long">${[1,2,3,6,12,24].map(x => `<option value="${x}" ${x==3?"selected":""}>for ${x} h</option>`).join("")}</select>
+            <button class="primary" data-veto="${k}" data-sid="${sid}" data-zone="${z.index}">Set temperature</button>
+          </div>
+        </div>
+      </section>`;
+
+      // more settings (collapsed)
+      more += `<section class="card"><details class="more"${moreOpen ? " open" : ""} id="more-${k}"><summary>More heating settings</summary>
+        <div style="margin-top:8px">
+        ${can("mode") ? `<div class="row"><span class="label">Mode</span>
           <select data-mode="zone_mode" data-sid="${sid}" data-zone="${z.index}">
-            ${z.modes.map(m => `<option value="${m}" ${m===z.mode?"selected":""}>${pretty(m)}</option>`).join("")}</select></div>
-        ${can("manual") ? `<div class="row"><label>Manual / day temp</label>${stepper(k+"man", z.manual_setpoint, 0.5, 5, 30)}
+            ${z.modes.map(m => `<option value="${m}" ${m===z.mode?"selected":""}>${pretty(m)}</option>`).join("")}</select></div>` : ""}
+        ${can("manual") ? `<div class="row"><span class="label">Manual / day temperature</span>${stepper(k+"man", z.manual_setpoint, 0.5, 5, 30)}
           <button data-set="zone_manual_setpoint" data-key="${k}man" data-sid="${sid}" data-zone="${z.index}">Save</button></div>` : ""}
-        ${can("setback") ? `<div class="row"><label>Night / setback temp</label>${stepper(k+"sb", z.setback_temperature, 0.5, 5, 30)}
+        ${can("setback") ? `<div class="row"><span class="label">Night temperature</span>${stepper(k+"sb", z.setback_temperature, 0.5, 5, 30)}
           <button data-set="zone_setback" data-key="${k}sb" data-sid="${sid}" data-zone="${z.index}">Save</button></div>` : ""}
-        ${!holiday && can("holiday") ? `<div class="row"><label>Away mode</label>
+        ${!holiday && can("holiday") ? `<div class="row"><span class="label">Away mode</span>
           <select id="${k}days">${[1,2,3,7,14,30].map(x => `<option value="${x}" ${x==7?"selected":""}>${x} day${x>1?"s":""}</option>`).join("")}</select>
           <button data-holiday="${k}" data-sid="${sid}">Go away</button></div>` : ""}
-        <hr><dl class="kv">
-          <dt>Schedule asks for</dt><dd>${fmt(z.schedule_setpoint)} °C</dd>
-          ${Object.entries(z.extra || {}).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
-          ${z.circuit ? `<dt>Flow now / wanted</dt><dd>${fmt(z.circuit.flow_temperature)} / ${fmt(z.circuit.flow_setpoint)} °C</dd>
-          <dt>Heating curve</dt><dd>${fmt(z.circuit.heating_curve, 2)}</dd>
-          <dt>Flow min / max</dt><dd>${fmt(z.circuit.flow_min, 0)} / ${fmt(z.circuit.flow_max, 0)} °C</dd>
-          <dt>Summer cut-off</dt><dd>${fmt(z.circuit.summer_limit)} °C outdoor</dd>` : ""}
-        </dl></div>`;
-    }
-    for (const d of s.dhw) {
-      const k = `d${d.index}`;
-      const boosting = d.special_function === "CYLINDER_BOOST";
-      h += `<div class="card"><h2>Hot water <span class="tag">${pretty(d.special_function)}</span></h2>
-        <div class="big">${d.temperature != null ? `${fmt(d.temperature)}<small> °C · set to ${fmt(d.setpoint, 0)} °C</small>` : `${fmt(d.setpoint, 0)}<small> °C set</small>`}</div>
-        <div class="row"><label>Temperature</label>${stepper(k+"t", d.setpoint, 1, d.min ?? 35, d.max ?? 65)}
-          <button data-set="dhw_temperature" data-key="${k}t" data-sid="${sid}" data-dhw="${d.index}">Save</button></div>
-        ${d.modes.length ? `<div class="row"><label>Mode</label>
-          <select data-mode="dhw_mode" data-sid="${sid}" data-dhw="${d.index}">
-            ${d.modes.map(m => `<option value="${m}" ${m===d.mode?"selected":""}>${pretty(m)}</option>`).join("")}</select></div>` : ""}
-        <div class="row"><label>Boost</label>
-          <button data-act="${boosting ? "dhw_cancel_boost" : "dhw_boost"}" data-p='${JSON.stringify({system: s.id, dhw: d.index})}'>${boosting ? "Stop boost" : "Heat water now"}</button></div>
-      </div>`;
+        <div class="row"><dl class="kv">
+          <dt>Schedule asks for</dt><dd class="num">${fmt(z.schedule_setpoint)} °C</dd>
+          ${Object.entries(z.extra || {}).map(([key, v]) => `<dt>${esc(key)}</dt><dd>${esc(v)}</dd>`).join("")}
+          ${z.circuit ? `<dt>Flow now / wanted</dt><dd class="num">${fmt(z.circuit.flow_temperature)} / ${fmt(z.circuit.flow_setpoint)} °C</dd>
+          <dt>Heating curve</dt><dd class="num">${fmt(z.circuit.heating_curve, 2)}</dd>
+          <dt>Flow min / max</dt><dd class="num">${fmt(z.circuit.flow_min, 0)} / ${fmt(z.circuit.flow_max, 0)} °C</dd>
+          <dt>Summer cut-off</dt><dd class="num">${fmt(z.circuit.summer_limit)} °C outdoor</dd>` : ""}
+        </dl></div></div></details></section>`;
     }
   }
 
-  // sensor comparison + compensation
-  const z = state.systems[0]?.zones[0];
-  const diff = ext.fresh && z?.room_temperature != null ? z.room_temperature - ext.temperature : null;
-  h += `<div class="card"><h2>Second sensor check</h2>`;
-  if (!ext.enabled) {
-    h += `<p class="muted">No external sensor configured. Add one in <code>config.toml</code> (section <code>[external_sensor]</code>)
-      to compare it with the Vaillant thermostat and optionally let it drive the heating.</p>`;
-  } else {
-    h += `<dl class="kv"><dt>Vaillant thermostat</dt><dd>${fmt(z?.room_temperature)} °C</dd>
-      <dt>${esc(ext.name)}</dt><dd>${fmt(ext.temperature)} °C ${ext.fresh ? "" : '<span class="pill warn">stale</span>'}</dd>
-      <dt>Difference</dt><dd>${diff == null ? "–" : (diff > 0 ? "+" : "") + fmt(diff) + " °C"}
-        ${diff == null ? "" : Math.abs(diff) < 0.5 ? '<span class="pill good">agree</span>' : `<span class="pill warn">Vaillant reads ${diff > 0 ? "warmer" : "colder"}</span>`}</dd></dl>
-      <hr>
-      <label class="switch"><input type="checkbox" id="comp" ${comp.compensation_enabled ? "checked" : ""}>
-        <b>Heat to the external sensor</b></label>
-      <p class="muted" style="margin:6px 0 0;font-size:12px">The Vaillant controller can only regulate on its own sensor, so the app shifts
-        its target by the difference (max ±${fmt(comp.config.max_offset)} °C) using a temporary override that expires by itself
-        after ${fmt(comp.config.veto_hours)} h if this app stops. Changes at most every ${comp.config.min_minutes_between_changes} min.</p>
-      ${comp.compensation_enabled ? `<dl class="kv" style="margin-top:8px">
-        <dt>Status</dt><dd>${esc(comp.state)}</dd>
-        ${comp.reason ? `<dt>Reasoning</dt><dd>${esc(comp.reason)}</dd>` : ""}
-        ${comp.state === "active" ? `<dt>You want</dt><dd>${fmt(comp.wanted)} °C (from the schedule)</dd>
-        <dt>Sent to Vaillant</dt><dd>${fmt(comp.setpoint)} °C (offset ${comp.offset > 0 ? "+" : ""}${fmt(comp.offset)})</dd>` : ""}
-        ${comp.last_action ? `<dt>Last action</dt><dd>${esc(comp.last_action)}</dd>` : ""}</dl>` : ""}`;
+  // key figures
+  let t = "";
+  for (const s of state.systems) {
+    t += tile("Outdoor", fmt(s.outdoor_temperature), "°C", s.outdoor_temperature_24h != null ? `24 h average ${fmt(s.outdoor_temperature_24h)} °C` : "");
+    for (const d of s.dhw) t += d.temperature != null ? tile("Hot water", fmt(d.temperature), "°C", `set to ${fmt(d.setpoint, 0)} °C`)
+                                                       : tile("Hot water setting", fmt(d.setpoint, 0), "°C", pretty(d.special_function));
+    if (s.water_pressure != null) t += tile("Water pressure", fmt(s.water_pressure, 2), "bar",
+      s.water_pressure < 1 ? "Low: top up the system" : s.water_pressure > 2.5 ? "High" : "Normal (1–2 bar)", s.water_pressure < 1 || s.water_pressure > 2.5 ? "warn" : "");
+    if (s.system_flow_temperature != null) t += tile("Radiator water", fmt(s.system_flow_temperature), "°C", "leaving the boiler");
+    if (s.cylinder_top != null) t += tile("Cylinder top / bottom", `${fmt(s.cylinder_top)}/${fmt(s.cylinder_bottom)}`, "°C");
+    for (const r of s.ambisense_rooms) t += tile(r.name, fmt(r.temperature), "°C", `target ${fmt(r.setpoint)} °C${r.window_open ? " · window open" : ""}`);
   }
-  h += `</div>`;
-  $("#controls").innerHTML = h;
+  if (ext.enabled && ext.humidity != null) t += tile(`${ext.name} humidity`, fmt(ext.humidity, 0), "%", ext.fresh ? `updated ${ago(ext.updated)}` : "no recent reading");
+  h += `<div class="tiles">${t}</div>`;
+
+  // sensor + hot water side by side
+  h += `<div class="cols">${sensorCard()}${state.systems.map(hotWaterCards).join("")}</div>`;
+  $("#home").innerHTML = h + more;
+}
+
+function sensorCard() {
+  const ext = state.external, comp = state.compensation;
+  const z = state.systems[0]?.zones[0];
+  if (!ext.enabled) return `<section class="card"><h2>Second sensor</h2>
+    <p class="muted" style="margin:0">No external sensor set up. Add one in <code>config.toml</code> under <code>[external_sensor]</code>
+    to compare it with the thermostat and, if you want, heat to its reading.</p></section>`;
+  const diff = ext.fresh && z?.room_temperature != null ? z.room_temperature - ext.temperature : null;
+  const agree = diff != null && Math.abs(diff) < 0.5;
+  let status = "";
+  if (comp.compensation_enabled) {
+    status = comp.state === "active"
+      ? `<b>Aiming for ${fmt(comp.wanted)} °C in ${esc(ext.name)}.</b> The thermostat is set to ${fmt(comp.setpoint)} °C
+         (${comp.offset >= 0 ? "+" : ""}${fmt(comp.offset)} °C) to make up for the difference.`
+      : `<b>${esc(comp.state[0].toUpperCase() + comp.state.slice(1))}.</b>`;
+    if (comp.reason) status += `<details class="more" style="margin-top:6px"><summary>Why?</summary><div class="small" style="margin-top:4px">${esc(comp.reason)}</div></details>`;
+  }
+  return `<section class="card"><h2>Second sensor<span class="spacer"></span>
+      ${diff == null ? `<span class="pill warn">No recent reading</span>` : agree ? `<span class="pill good">Sensors agree</span>`
+        : `<span class="pill warn">Thermostat reads ${fmt(Math.abs(diff))} °C ${diff > 0 ? "warmer" : "colder"}</span>`}</h2>
+    <div class="compare">
+      <div><div class="label">Thermostat</div><div class="value num">${fmt(z?.room_temperature)} °C</div></div>
+      <div><div class="label">${esc(ext.name)}</div><div class="value num">${fmt(ext.temperature)} °C</div>
+        <div class="muted small">${ext.fresh ? `updated ${ago(ext.updated)}` : ext.error ? esc(ext.error) : "no recent reading"}</div></div>
+    </div>
+    <label class="switch"><input type="checkbox" id="comp" ${comp.compensation_enabled ? "checked" : ""}><span class="track"></span>
+      <span><b>Heat to ${esc(ext.name)}</b><br><span class="muted small">Adjust the thermostat so this room reaches your schedule's temperature</span></span></label>
+    ${status ? `<div class="explain">${status}</div>` : ""}
+  </section>`;
+}
+
+function hotWaterCards(s) {
+  return s.dhw.map(d => {
+    const k = `d${d.index}`;
+    const boosting = d.special_function === "CYLINDER_BOOST";
+    const p = esc(JSON.stringify({system: s.id, dhw: d.index}));
+    return `<section class="card"><h2>Hot water<span class="spacer"></span>${boosting ? `<span class="pill heat">${ICON.flame} Boosting</span>` : ""}</h2>
+      <div class="row"><span class="label">Temperature</span>${stepper(k+"t", d.setpoint, 1, d.min ?? 35, d.max ?? 65)}
+        <button data-set="dhw_temperature" data-key="${k}t" data-sid="${esc(s.id)}" data-dhw="${d.index}">Save</button></div>
+      ${d.modes.length ? `<div class="row"><span class="label">Mode</span>
+        <select data-mode="dhw_mode" data-sid="${esc(s.id)}" data-dhw="${d.index}">
+          ${d.modes.map(m => `<option value="${m}" ${m===d.mode?"selected":""}>${pretty(m)}</option>`).join("")}</select></div>` : ""}
+      <div class="row"><span class="label">Boost</span>
+        <button data-act="${boosting ? "dhw_cancel_boost" : "dhw_boost"}" data-p="${p}">${boosting ? "Stop boost" : "Heat water now"}</button></div>
+    </section>`;
+  }).join("");
 }
 
 function renderDevices() {
   let h = "";
   for (const s of state.systems) {
-    h += `<dl class="kv" style="margin-bottom:12px">
+    h += `<dl class="kv" style="margin-bottom:16px">
       <dt>Controller</dt><dd>${esc(s.controller)}</dd><dt>Gateway</dt><dd>${esc(s.gateway || "–")}</dd>
       <dt>Firmware</dt><dd>${esc(s.firmware || "–")}</dd>
-      <dt>Online</dt><dd>${s.connected == null ? "–" : s.connected ? '<span class="pill good">● connected</span>' : '<span class="pill bad">● offline</span>'}</dd>
+      <dt>Online</dt><dd>${s.connected == null ? "–" : s.connected ? '<span class="pill good">Connected</span>' : '<span class="pill bad">Offline</span>'}</dd>
       ${s.energy_manager_state ? `<dt>Energy manager</dt><dd>${pretty(s.energy_manager_state)}</dd>` : ""}
-      <dt>Fault codes</dt><dd>${s.trouble_codes && s.trouble_codes.length ? `<span class="pill bad">${s.trouble_codes.length} reported</span>` : '<span class="pill good">none</span>'}</dd></dl>
+      <dt>Fault codes</dt><dd>${s.trouble_codes && s.trouble_codes.length ? `<span class="pill bad">${s.trouble_codes.length} reported</span>` : '<span class="pill good">None</span>'}</dd></dl>
     <div style="overflow-x:auto"><table><thead><tr><th>Device</th><th>Model</th><th>Type</th><th>Serial</th><th>Live values</th></tr></thead><tbody>`;
     for (const d of s.devices) {
       const op = Object.entries(d.operational_data || {}).map(([k, v]) =>
-        `${pretty(k)}: ${typeof v === "object" && v ? `${v.value ?? JSON.stringify(v)} ${v.unit ?? ""}` : v}`).join("<br>");
+        `${pretty(k)}: ${typeof v === "object" && v ? `${esc(v.value ?? JSON.stringify(v))} ${esc(v.unit ?? "")}` : esc(v)}`).join("<br>");
       h += `<tr><td>${esc(d.name)}</td><td>${esc(d.product || "–")}</td><td>${pretty(d.type)}</td>
         <td><code>${esc(d.serial)}</code></td><td>${op || '<span class="muted">–</span>'}</td></tr>`;
       if (d.trouble_codes && d.trouble_codes.length)
@@ -375,12 +507,12 @@ document.addEventListener("click", (e) => {
     const k = b.dataset.step, d = +b.dataset.d;
     const cur = pending[k] ?? parseFloat($("#v-" + k).textContent);
     pending[k] = Math.min(+b.dataset.max, Math.max(+b.dataset.min, (Number.isNaN(cur) ? +b.dataset.min : cur) + d));
-    $("#v-" + k).textContent = fmt(pending[k], Math.abs(d) < 1 ? 1 : 0);
+    $("#v-" + k).firstChild.textContent = fmt(pending[k], Math.abs(d) < 1 ? 1 : 0);
   } else if (b.dataset.act) {
     act(b.dataset.act, JSON.parse(b.dataset.p), b.textContent.trim());
   } else if (b.dataset.veto) {
     const k = b.dataset.veto, temp = parseFloat($(`#v-${k}veto`).textContent);
-    act("zone_quick_veto", {system: b.dataset.sid, zone: +b.dataset.zone, temperature: temp, hours: +$(`#${k}hours`).value}, `Override ${temp} °C`);
+    act("zone_quick_veto", {system: b.dataset.sid, zone: +b.dataset.zone, temperature: temp, hours: +$(`#${k}hours`).value}, `${temp} °C for ${$(`#${k}hours`).value} h`);
   } else if (b.dataset.set) {
     const temp = parseFloat($("#v-" + b.dataset.key).textContent);
     const p = {system: b.dataset.sid, temperature: temp};
@@ -390,6 +522,9 @@ document.addEventListener("click", (e) => {
     act("holiday", {system: b.dataset.sid, days: +$(`#${b.dataset.holiday}days`).value}, "Away mode on");
   }
 });
+document.addEventListener("toggle", (e) => {
+  if (e.target.id?.startsWith("more-z")) moreOpen = e.target.open;
+}, true);
 document.addEventListener("change", async (e) => {
   const el = e.target;
   if (el.dataset.mode) {
@@ -398,11 +533,11 @@ document.addEventListener("change", async (e) => {
     act(el.dataset.mode, p, `Mode: ${pretty(el.value)}`);
   } else if (el.id === "comp") {
     try { await post("/api/compensation", {compensation_enabled: el.checked});
-          toast(el.checked ? "Now heating to the external sensor" : "Back to the Vaillant thermostat"); setTimeout(load, 6000); }
+          toast(el.checked ? `Now heating to ${state.external.name}` : "Back to the thermostat's own sensor"); setTimeout(load, 6000); }
     catch (err) { toast("Failed: " + err.message); }
   } else if (el.id === "range") loadHistory();
 });
-$("#refresh").onclick = async () => { await post("/api/refresh", {}); toast("Asked Vaillant for fresh data"); setTimeout(load, 7000); };
+$("#refresh").onclick = async () => { await post("/api/refresh", {}); toast("Asking for fresh data…"); setTimeout(load, 7000); };
 $("#theme").onclick = () => {
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
@@ -420,7 +555,7 @@ $("#raw-details").addEventListener("toggle", async (e) => {
 const charts = {};
 let historyData = {};
 
-function baseOptions(unit, hours, xTicks = 7) {
+function baseOptions(unit, hours, xTicks = innerWidth < 600 ? 4 : 7) {
   const tick = css("--text-2"), grid = css("--grid");
   return {
     responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
@@ -442,7 +577,8 @@ function baseOptions(unit, hours, xTicks = 7) {
 
 function lineChart(id, datasets, unit, hours, xTicks) {
   if (charts[id]) charts[id].destroy();
-  const el = document.getElementById(id); if (!el) return;
+  const el = document.getElementById(id);
+  if (!el || el.closest(".panel")?.hidden) return;
   charts[id] = new Chart(el, {type: "line", data: {datasets}, options: baseOptions(unit, hours, xTicks)});
 }
 const pts = (k) => (historyData[k] || []).map(([x, y]) => ({x, y}));
@@ -453,7 +589,7 @@ function redrawCharts() {
   const z = state.systems[0]?.zones[0];
   const zk = z ? `zone${z.index}` : null;
   const room = [];
-  if (zk) room.push({label: "Vaillant thermostat", data: pts(zk + ".room"), borderColor: css("--s1")});
+  if (zk) room.push({label: "Thermostat", data: pts(zk + ".room"), borderColor: css("--s1")});
   if (state.external.enabled) room.push({label: state.external.name, data: pts("external.temperature"), borderColor: css("--s2")});
   if (zk) room.push({label: "Thermostat target", data: pts(zk + ".target"), borderColor: css("--s3"), borderDash: [5, 4], stepped: true, tension: 0});
   if (zk && state.compensation.compensation_enabled) room.push({label: "Schedule wants", data: pts(zk + ".wanted"), borderColor: css("--s4"), borderDash: [2, 3], stepped: true, tension: 0});
@@ -462,16 +598,18 @@ function redrawCharts() {
 
   const small = [
     ["outdoor", "Outdoor temperature", "°C"],
-    ["flow", "Flow temperature", "°C"],
+    ["flow", "Radiator water temperature", "°C"],
     ["water_pressure", "Water pressure", "bar"],
   ];
   for (const d of state.systems[0]?.dhw || []) small.push([`dhw${d.index}`, "Hot water", "°C"]);
-  if (zk) small.push([zk + ".humidity", "Humidity (Vaillant)", "%"]);
+  if (zk) small.push([zk + ".humidity", "Humidity (thermostat)", "%"]);
+  small.push(["external.humidity", `Humidity (${state.external.name})`, "%"]);
   for (let i = small.length - 1; i >= 0; i--) if (!(historyData[small[i][0]] || []).length) small.splice(i, 1);
   const multi = $("#multi");
   const want = small.map(s => s[0]).join();
   if (multi.dataset.keys !== want) {
-    multi.innerHTML = small.map(([k, label]) => `<div><h3>${label}</h3><div class="chart-box small"><canvas id="m-${k.replace(/\W/g, "_")}"></canvas></div></div>`).join("");
+    multi.innerHTML = small.length ? small.map(([k, label]) => `<div><h3>${esc(label)}</h3><div class="chart-box small"><canvas id="m-${k.replace(/\W/g, "_")}"></canvas></div></div>`).join("")
+      : '<p class="muted">No history yet. Charts fill up as the app runs.</p>';
     multi.dataset.keys = want;
   }
   for (const [k, label, unit] of small)
@@ -483,8 +621,7 @@ function redrawCharts() {
 function drawEnergy() {
   const series = state.energy || [];
   $("#energy-card").hidden = !series.length;
-  if (!series.length) return;
-  // group by operation mode (heating / hot water / ...) for consumed energy, keep it to <= 4 series
+  if (!series.length || $("#tab-charts").hidden) return;
   const byMode = {};
   for (const s of series) {
     const key = `${pretty(s.operation_mode)} · ${pretty(s.energy_type)}`;
@@ -505,18 +642,19 @@ function drawEnergy() {
       scales: {x: {stacked: true, grid: {display: false}, ticks: {color: tick}},
                y: {stacked: true, grid: {color: grid}, border: {display: false}, ticks: {color: tick, callback: (v) => `${v / 1000} kWh`}}}}});
   $("#legend-energy").innerHTML = keys.map((k, i) => `<span><i style="background:${colors[i]};height:10px"></i>${esc(k)}</span>`).join("");
-  $("#energy-table").innerHTML = `<table><thead><tr><th>Device</th><th>Mode</th><th>Type</th><th class="num">kWh</th></tr></thead><tbody>${
-    series.map(s => `<tr><td>${esc(s.device)}</td><td>${pretty(s.operation_mode)}</td><td>${pretty(s.energy_type)}</td><td class="num">${(s.total / 1000).toFixed(2)}</td></tr>`).join("")}</tbody></table>`;
+  $("#energy-table").innerHTML = `<table><thead><tr><th>Device</th><th>Mode</th><th>Type</th><th class="r">kWh</th></tr></thead><tbody>${
+    series.map(s => `<tr><td>${esc(s.device)}</td><td>${pretty(s.operation_mode)}</td><td>${pretty(s.energy_type)}</td><td class="r num">${(s.total / 1000).toFixed(2)}</td></tr>`).join("")}</tbody></table>`;
 }
 
 // ---------- activity log ----------
-const KIND = {command: ["Command", "warn"], detected: ["Change", ""], check: ["Decision", ""],
-              error: ["Error", "bad"], sensor: ["Sensor", ""], system: ["App", "good"]};
+const KIND = {command: ["Command", "accent"], detected: ["Change", ""], check: ["Decision", ""],
+              error: ["Error", "bad"], sensor: ["Sensor", "warn"], system: ["App", "good"]};
 async function loadLog() {
+  if ($("#tab-activity").hidden) return;
   try {
     const ev = await (await fetch(`/api/events?hours=${$("#log-range").value}&kinds=${$("#log-filter").value}`)).json();
     $("#log").innerHTML = ev.length ? `<table><thead><tr><th>When</th><th>What</th><th>By</th><th>Details</th></tr></thead><tbody>${
-      ev.map(e => `<tr><td style="white-space:nowrap">${new Date(e.ts * 1000).toLocaleString([], {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"})}</td>
+      ev.map(e => `<tr><td style="white-space:nowrap" class="num">${new Date(e.ts * 1000).toLocaleString([], {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"})}</td>
         <td><span class="pill ${KIND[e.kind]?.[1] || ""}">${KIND[e.kind]?.[0] || esc(e.kind)}</span></td>
         <td>${esc(e.source[0].toUpperCase() + e.source.slice(1))}</td>
         <td>${esc(e.message)}</td></tr>`).join("")}</tbody></table>`
@@ -540,9 +678,10 @@ async function load() {
     $("#dot").className = "dot err"; $("#status").textContent = "App not reachable";
   }
 }
+try { const t = localStorage.getItem("tab"); if (t && $(`#tab-${t}`)) showTab(t); } catch {}
 load();
 setInterval(load, 30000);
-setInterval(() => { if (state) $("#status").textContent = state.error ? "Error" : `Updated ${ago(state.updated)}`; }, 5000);
+setInterval(() => { if (state) $("#status").textContent = state.error ? "Connection problem" : `Updated ${ago(state.updated)}`; }, 5000);
 </script>
 </body>
 </html>
